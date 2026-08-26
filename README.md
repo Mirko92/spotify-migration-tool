@@ -19,6 +19,15 @@ Tool frontend-only per migrare playlist, brani salvati e artisti seguiti tra due
 
 Nel dashboard Spotify configura questi Redirect URI.
 
+Dashboard: https://developer.spotify.com/dashboard
+
+Configurazione rapida app Spotify:
+
+- Crea una nuova app
+- Copia il tuo Client ID
+- Inserisci il Client ID direttamente nella home dell'app
+- Aggiungi i Redirect URI indicati sotto nella configurazione della app
+
 ### Locale
 
 - `http://127.0.0.1:5173/auth/source`
@@ -38,7 +47,9 @@ Nota: puoi anche usare il dominio `firebaseapp.com` se e quello che pubblichi, m
 Configura [.env.example](.env.example):
 
 ```env
-VITE_SPOTIFY_CLIENT_ID=il_tuo_spotify_client_id
+# Client ID opzionale come fallback.
+# Se assente, l'utente lo inserisce dalla UI nella home.
+# VITE_SPOTIFY_CLIENT_ID=
 VITE_SPOTIFY_SOURCE_REDIRECT_URI=http://127.0.0.1:5173/auth/source
 VITE_SPOTIFY_DESTINATION_REDIRECT_URI=http://127.0.0.1:5173/auth/destination
 ```
@@ -48,7 +59,9 @@ VITE_SPOTIFY_DESTINATION_REDIRECT_URI=http://127.0.0.1:5173/auth/destination
 Usa [.env.production](.env.production):
 
 ```env
-VITE_SPOTIFY_CLIENT_ID=il_tuo_spotify_client_id
+# Client ID opzionale come fallback.
+# Se assente, l'utente lo inserisce dalla UI nella home.
+# VITE_SPOTIFY_CLIENT_ID=
 VITE_OAUTH_BASE_URL=https://spotifymigrationtool-d722b.web.app
 ```
 

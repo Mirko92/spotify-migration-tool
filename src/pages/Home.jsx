@@ -1,5 +1,5 @@
-import React from 'react';
-import { Container, Typography, Box, Button, Paper, Grid, Card, CardContent, CardActions, Chip, LinearProgress } from '@mui/material';
+import React, { useState } from 'react';
+import { Container, Typography, Box, Button, Paper, Grid, Card, CardContent, CardActions, Chip, LinearProgress, Alert, Link, TextField } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { 
   MusicNote as MusicNoteIcon, 
@@ -11,10 +11,21 @@ import {
   Security as SecurityIcon,
   Speed as SpeedIcon
 } from '@mui/icons-material';
+import { getConfiguredClientId, getRedirectUris, setConfiguredClientId } from '../services/authService';
 
 const Home = ({ authStatus }) => {
   const navigate = useNavigate();
   const { sourceAuthenticated, destAuthenticated } = authStatus;
+  const [clientIdInput, setClientIdInput] = useState(getConfiguredClientId());
+  const [clientIdSaved, setClientIdSaved] = useState(!!getConfiguredClientId());
+  const redirectUris = getRedirectUris();
+
+  const handleSaveClientId = () => {
+    const normalizedClientId = clientIdInput.trim();
+    setConfiguredClientId(normalizedClientId);
+    setClientIdSaved(!!normalizedClientId);
+    setClientIdInput(normalizedClientId);
+  };
 
   const getProgressValue = () => {
     if (sourceAuthenticated && destAuthenticated) return 100;
@@ -126,6 +137,60 @@ const Home = ({ authStatus }) => {
           />
         </Box>
       </Box>
+
+      <Paper
+        elevation={0}
+        sx={{
+          p: 4,
+          borderRadius: 4,
+          background: 'linear-gradient(135deg, rgba(29, 185, 84, 0.12) 0%, rgba(26, 163, 74, 0.06) 100%)',
+          border: '1px solid rgba(29, 185, 84, 0.25)',
+          mb: 6
+        }}
+      >
+        <Typography variant="h5" fontWeight={700} sx={{ mb: 2 }}>
+          Configura la tua app Spotify
+        </Typography>
+        <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+          Inserisci il tuo Client ID personale. Non usiamo un Client ID condiviso.
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Dashboard: <Link href="https://developer.spotify.com/dashboard" target="_blank" rel="noreferrer">https://developer.spotify.com/dashboard</Link>
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Passi rapidi: crea una app, copia il Client ID e aggiungi questi Redirect URI nella configurazione Spotify.
+        </Typography>
+        <Box sx={{ mb: 2, pl: 2 }}>
+          <Typography variant="body2" sx={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
+            SOURCE: {redirectUris.source}
+          </Typography>
+          <Typography variant="body2" sx={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
+            DESTINATION: {redirectUris.destination}
+          </Typography>
+        </Box>
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+          <TextField
+            label="Spotify Client ID"
+            value={clientIdInput}
+            onChange={(event) => setClientIdInput(event.target.value)}
+            placeholder="Inserisci il Client ID della tua app"
+            size="small"
+            sx={{ minWidth: 320, flex: 1 }}
+          />
+          <Button variant="contained" color="primary" onClick={handleSaveClientId}>
+            Salva Client ID
+          </Button>
+        </Box>
+        {clientIdSaved ? (
+          <Alert severity="success" sx={{ mt: 2 }}>
+            Client ID configurato in locale nel browser.
+          </Alert>
+        ) : (
+          <Alert severity="warning" sx={{ mt: 2 }}>
+            Inserisci il Client ID prima di collegare gli account Spotify.
+          </Alert>
+        )}
+      </Paper>
 
       {/* Steps Section */}
       <Grid container spacing={4} sx={{ mb: 8 }}>

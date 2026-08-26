@@ -1,4 +1,5 @@
-const CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
+const CLIENT_ID_STORAGE_KEY = 'spotify_client_id';
+const ENV_CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
 const SOURCE_REDIRECT_URI = import.meta.env.VITE_SPOTIFY_SOURCE_REDIRECT_URI;
 const DESTINATION_REDIRECT_URI = import.meta.env.VITE_SPOTIFY_DESTINATION_REDIRECT_URI;
 const OAUTH_BASE_URL = (import.meta.env.VITE_OAUTH_BASE_URL || '').replace(/\/+$/, '');
@@ -11,6 +12,23 @@ const REDIRECT_PATHS = {
 
 const accountKey = role => `spotify_${role}`;
 const pendingKey = role => `spotify_pkce_${role}`;
+
+const getClientId = () => {
+  const storedClientId = (localStorage.getItem(CLIENT_ID_STORAGE_KEY) || '').trim();
+  if (storedClientId) return storedClientId;
+  return (ENV_CLIENT_ID || '').trim();
+};
+
+export const getConfiguredClientId = () => getClientId();
+
+export const setConfiguredClientId = (clientId) => {
+  const normalizedClientId = (clientId || '').trim();
+  if (normalizedClientId) {
+    localStorage.setItem(CLIENT_ID_STORAGE_KEY, normalizedClientId);
+  } else {
+    localStorage.removeItem(CLIENT_ID_STORAGE_KEY);
+  }
+};
 
 const createRandomString = (length) => {
   const bytes = new Uint8Array(length);
@@ -42,8 +60,9 @@ export const getRedirectUris = () => ({
 });
 
 export const startLogin = async (role) => {
-  if (!CLIENT_ID) {
-    throw new Error('VITE_SPOTIFY_CLIENT_ID non configurato: imposta la variabile in .env o .env.production');
+  const clientId = getClientId();
+  if (!clientId) {
+    throw new Error('Spotify Client ID non configurato: inseriscilo nella home oppure impostalo in .env/.env.production');
   }
 
   const verifier = createRandomString(64);
@@ -52,7 +71,7 @@ export const startLogin = async (role) => {
   localStorage.setItem(pendingKey(role), JSON.stringify({ verifier, state }));
 
   const params = new URLSearchParams({
-    client_id: CLIENT_ID,
+    client_id: clientId,
     response_type: 'code',
     redirect_uri: redirectUri(role),
     code_challenge_method: 'S256',
@@ -78,6 +97,11 @@ export const startLogin = async (role) => {
 };
 
 export const completeLogin = async (role) => {
+  const clientId = getClientId();
+  if (!clientId) {
+    throw new Error('Spotify Client ID non configurato: inseriscilo nella home oppure impostalo in .env/.env.production');
+  }
+
   const params = new URLSearchParams(window.location.search);
   const code = params.get('code');
   const state = params.get('state');
@@ -91,7 +115,7 @@ export const completeLogin = async (role) => {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
-      client_id: CLIENT_ID,
+      client_id: clientId,
       grant_type: 'authorization_code',
       code,
       redirect_uri: redirectUri(role),
@@ -115,6 +139,11 @@ export const completeLogin = async (role) => {
 };
 
 export const getToken = async (role) => {
+  const clientId = getClientId();
+  if (!clientId) {
+    throw new Error('Spotify Client ID non configurato: inseriscilo nella home oppure impostalo in .env/.env.production');
+  }
+
   const account = JSON.parse(localStorage.getItem(accountKey(role)) || 'null');
   if (!account) throw new Error(`Account ${role} non autenticato`);
   if (account.expiresAt > Date.now() + 60000) return account.access_token;
@@ -124,7 +153,7 @@ export const getToken = async (role) => {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
-      client_id: CLIENT_ID,
+      client_id: clientId,
       grant_type: 'refresh_token',
       refresh_token: account.refresh_token
     })
