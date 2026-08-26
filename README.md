@@ -2,6 +2,12 @@
 
 Tool frontend-only per migrare playlist, brani salvati e artisti seguiti tra due account Spotify.
 
+## Servizio online
+
+Il servizio e disponibile qui:
+
+https://spotifymigrationtool-d722b.web.app/
+
 ## Architettura attuale
 
 - Frontend React + Vite
@@ -38,7 +44,7 @@ Configurazione rapida app Spotify:
 - `https://spotifymigrationtool-d722b.web.app/auth/source`
 - `https://spotifymigrationtool-d722b.web.app/auth/destination`
 
-Nota: puoi anche usare il dominio `firebaseapp.com` se e quello che pubblichi, ma deve combaciare esattamente con l'URL effettivo.
+Nota: puoi anche usare il dominio `firebaseapp.com` se e quello che pubblichi, ma deve combaciare esattamente con l'URL effettivo configurato in Spotify.
 
 ## Variabili ambiente
 
