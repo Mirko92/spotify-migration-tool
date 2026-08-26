@@ -1,4 +1,7 @@
 const CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
+const SOURCE_REDIRECT_URI = import.meta.env.VITE_SPOTIFY_SOURCE_REDIRECT_URI;
+const DESTINATION_REDIRECT_URI = import.meta.env.VITE_SPOTIFY_DESTINATION_REDIRECT_URI;
+const OAUTH_BASE_URL = (import.meta.env.VITE_OAUTH_BASE_URL || '').replace(/\/+$/, '');
 const AUTH_ENDPOINT = 'https://accounts.spotify.com/authorize';
 const TOKEN_ENDPOINT = 'https://accounts.spotify.com/api/token';
 const REDIRECT_PATHS = {
@@ -24,11 +27,23 @@ const createCodeChallenge = async (verifier) => {
     .replace(/=+$/, '');
 };
 
-const redirectUri = role => `${window.location.origin}${REDIRECT_PATHS[role]}`;
+const redirectUri = role => {
+  if (role === 'source' && SOURCE_REDIRECT_URI) return SOURCE_REDIRECT_URI;
+  if (role === 'destination' && DESTINATION_REDIRECT_URI) return DESTINATION_REDIRECT_URI;
+  if (OAUTH_BASE_URL) return `${OAUTH_BASE_URL}${REDIRECT_PATHS[role]}`;
+  return `${window.location.origin}${REDIRECT_PATHS[role]}`;
+};
+
+export const getRedirectUri = (role) => redirectUri(role);
+
+export const getRedirectUris = () => ({
+  source: redirectUri('source'),
+  destination: redirectUri('destination')
+});
 
 export const startLogin = async (role) => {
   if (!CLIENT_ID) {
-    throw new Error('VITE_SPOTIFY_CLIENT_ID non configurato');
+    throw new Error('VITE_SPOTIFY_CLIENT_ID non configurato: imposta la variabile in .env o .env.production');
   }
 
   const verifier = createRandomString(64);

@@ -1,326 +1,105 @@
-# 🎵 Spotify Migration Tool
+# Spotify Migration Tool
 
-<div align="center">
+Tool frontend-only per migrare playlist, brani salvati e artisti seguiti tra due account Spotify.
 
-![Spotify Migration Tool](https://img.shields.io/badge/Spotify-Migration%20Tool-1DB954?style=for-the-badge&logo=spotify&logoColor=white)
-![Version](https://img.shields.io/badge/version-2.0.0-blue?style=for-the-badge)
-![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
+## Architettura attuale
 
-**🚀 Migra facilmente playlist, brani salvati e artisti seguiti tra account Spotify diversi**
+- Frontend React + Vite
+- OAuth Spotify con PKCE direttamente nel browser
+- Nessun backend applicativo
+- Deploy statico su Firebase Hosting
 
-*Un'applicazione web moderna e sicura per trasferire la tua libreria musicale*
+## Prerequisiti
 
-</div>
+- Node.js LTS
+- Un account Firebase (progetto: `spotifymigrationtool-d722b`)
+- Una app su Spotify Developer Dashboard
 
----
+## Configurazione Spotify
 
-## 📋 Indice
+Nel dashboard Spotify configura questi Redirect URI.
 
-- [✨ Caratteristiche](#-caratteristiche)
-- [🎯 Cosa puoi migrare](#-cosa-puoi-migrare)
-- [🚀 Installazione e Setup](#-installazione-e-setup)
-- [🎮 Come Usare l'App](#-come-usare-lapp)
-- [🛠️ Troubleshooting](#️-troubleshooting)
-- [❓ FAQ](#-faq)
+### Locale
 
----
+- `http://127.0.0.1:5173/auth/source`
+- `http://127.0.0.1:5173/auth/destination`
 
-## ✨ Caratteristiche
+### Produzione Firebase
 
-### 🚀 **Funzionalità Principali**
-- ✅ **Architettura Single-App** - Una sola configurazione Spotify
-- ✅ **Autenticazione Sicura** - OAuth2 + refresh automatico token
-- ✅ **Zero Perdite** - Controllo duplicati intelligente
-- ✅ **Interfaccia Moderna** - Design responsive con Material-UI
-- ✅ **Logging Dettagliato** - Monitoraggio completo delle operazioni
-- ✅ **Gestione Errori** - Recovery automatico e retry intelligente
+- `https://spotifymigrationtool-d722b.web.app/auth/source`
+- `https://spotifymigrationtool-d722b.web.app/auth/destination`
 
----
+Nota: puoi anche usare il dominio `firebaseapp.com` se e quello che pubblichi, ma deve combaciare esattamente con l'URL effettivo.
 
-## 🎯 Cosa puoi migrare
+## Variabili ambiente
 
-<table>
-<tr>
-<td width="33%">
+### Sviluppo locale
 
-### 🎵 **Playlist**
-- ✅ Tutte le playlist (pubbliche e private)
-- ✅ Nomi e descrizioni originali
-- ✅ Ordine dei brani mantenuto
-- ✅ Immagini personalizzate delle playlist
-
-</td>
-<td width="33%">
-
-### 💚 **Brani Salvati** 
-- ✅ Tutti i brani "Mi piace"
-- ✅ Fino a 10.000+ brani
-- ✅ Controllo duplicati automatico
-- ✅ Gestione batch intelligente
-
-</td>
-<td width="33%">
-
-### 👨‍🎤 **Artisti Seguiti**
-- ✅ Tutti gli artisti che segui
-- ✅ Migrazione batch ottimizzata
-- ✅ Verifica automatica duplicati
-- ✅ Processo veloce e affidabile
-
-</td>
-</tr>
-</table>
-
----
-
-## 🚀 Installazione e Setup
-
-### 📋 **Prerequisiti**
-
-**Ti servono:**
-- **Node.js** (versione LTS): [Scarica qui](https://nodejs.org/)
-- **Due account Spotify** (gratuiti o premium)
-- **Una app Spotify** nel Developer Dashboard
-
----
-
-### 🌟 **Step 1: Scaricare l'Applicazione**
-
-**Metodo 1 - Download ZIP:**
-1. Vai su https://github.com/tomzdev/spotify-migration-tool
-2. Clicca **"Code"** → **"Download ZIP"**
-3. Estrai nella cartella che preferisci
-
-**Metodo 2 - Git Clone:**
-```bash
-git clone https://github.com/tomzdev/spotify-migration-tool.git
-cd spotify-migration-tool
-```
-
----
-
-### 🎵 **Step 2: Configurare App Spotify**
-
-> **⚠️ IMPORTANTE**: Questo è il passaggio più critico!
-
-#### **2.1 Crea l'App Spotify**
-
-1. **Vai su**: [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/)
-2. **Accedi** con qualsiasi account Spotify
-3. **Clicca** su **"Create app"**
-
-#### **2.2 Configura l'App**
-
-Compila i campi:
-
-| Campo | Valore |
-|-------|--------|
-| **App name** | `Spotify Migration Tool` |
-| **App description** | `Tool per migrare playlist tra account Spotify` |
-| **Website** | `http://localhost:5000` |
-| **Redirect URI** | Vedi sotto ⬇️ |
-
-#### **2.3 Aggiungi i Redirect URI** 
-
-> **🔑 CRUCIALE**: Aggiungi ESATTAMENTE questi due URI:
-
-1. `http://localhost:5000/api/auth/source/callback`
-2. `http://localhost:5000/api/auth/destination/callback`
-
-#### **2.4 Ottieni le Credenziali**
-
-1. **Salva** l'app
-2. Vai su **"Settings"**
-3. **Copia** il **Client ID** e **Client Secret**
-
-#### **2.5 Aggiungi Utenti di Test**
-
-1. Vai su **"User Management"**
-2. **Aggiungi** l'email dell'account **sorgente**
-3. **Aggiungi** l'email dell'account **destinazione**
-
----
-
-### ⚙️ **Step 3: Configurazione Locale**
-
-#### **3.1 Installa le Dipendenze**
-
-```bash
-# Installa dipendenze backend
-npm install
-
-# Installa dipendenze frontend e build
-cd client
-npm install
-npm run build
-cd ..
-```
-
-#### **3.2 Configura Environment**
-
-**Metodo veloce:**
-1. Copia il file `config-example.env` 
-2. Rinominalo in `.env`
-3. Modifica i valori:
+Configura [.env.example](.env.example):
 
 ```env
-# Sostituisci con i tuoi valori reali
-SPOTIFY_CLIENT_ID=il_tuo_client_id
-SPOTIFY_CLIENT_SECRET=il_tuo_client_secret
-
-# NON modificare questi
-SPOTIFY_REDIRECT_URI=http://localhost:5000/api/auth/source/callback
-DEST_REDIRECT_URI=http://localhost:5000/api/auth/destination/callback
-
-# Genera una stringa casuale lunga
-SESSION_SECRET=stringa_casuale_molto_lunga_e_sicura
-
-PORT=5000
+VITE_SPOTIFY_CLIENT_ID=il_tuo_spotify_client_id
+VITE_SPOTIFY_SOURCE_REDIRECT_URI=http://127.0.0.1:5173/auth/source
+VITE_SPOTIFY_DESTINATION_REDIRECT_URI=http://127.0.0.1:5173/auth/destination
 ```
 
----
+### Produzione
 
-### 🚀 **Step 4: Avviare l'Applicazione**
+Usa [.env.production](.env.production):
+
+```env
+VITE_SPOTIFY_CLIENT_ID=il_tuo_spotify_client_id
+VITE_OAUTH_BASE_URL=https://spotifymigrationtool-d722b.web.app
+```
+
+## Avvio locale
+
+Dal root progetto:
 
 ```bash
+npm install
 npm start
 ```
 
-**Output atteso:**
-```
-🚀 Server avviato su porta 5000
-🎵 Spotify Migration Tool pronto!
-🌐 Apri: http://localhost:5000
-```
+Questo avvia Vite su `http://127.0.0.1:5173`.
 
-**Apri il browser su:** http://localhost:5000
+## Build
 
----
+Dal root:
 
-## 🎮 Come Usare l'App
-
-### 🏠 **Interfaccia Principale**
-
-Quando apri l'app vedrai:
-
-```
-🎵 Spotify Migration Tool
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📊 Stato Configurazione: ░░░░░░░░░░ 0%
-
-🔸 Passaggio 1: Connetti Account Sorgente     [ Non Connesso ]
-🔸 Passaggio 2: Connetti Account Destinazione [ Non Connesso ]  
-🔸 Passaggio 3: Inizia Migrazione            [ Non Disponibile ]
+```bash
+npm run build
 ```
 
-### 1️⃣ **Connetti Account Sorgente**
+Output in `dist`.
 
-1. **Clicca** su **"Connetti Account Sorgente"**
-2. **Accedi** con l'account da cui vuoi **copiare** i dati
-3. **Autorizza** l'applicazione
+## Deploy su Firebase Hosting
 
-### 2️⃣ **Connetti Account Destinazione**
+### Primo setup
 
-1. **Clicca** su **"Connetti Account Destinazione"**
-2. **⚠️ IMPORTANTE**: Se vedi l'account precedente, clicca **"Non sei tu?"**
-3. **Accedi** con l'account **destinazione**
-4. **Autorizza** l'applicazione
-
-### 3️⃣ **Avvia la Migrazione**
-
-1. **Clicca** su **"Inizia Migrazione"**
-2. **Seleziona** cosa migrare:
-   - ☑️ Playlist
-   - ☑️ Brani Salvati
-   - ☑️ Artisti Seguiti
-
-3. **Clicca** **"Avvia Migrazione"**
-
-### 📊 **Monitoraggio Progresso**
-
-Durante la migrazione vedrai aggiornamenti in tempo reale:
-
-```
-🎵 Migrazione in Corso...
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📋 Playlist:       ████████████░░░░░░░░ 15/27 (55%)
-💚 Brani Salvati:  ██████░░░░░░░░░░░░░░ 312/1247 (25%)  
-👨‍🎤 Artisti:       ████████████████████ 89/89 (100%) ✅
-
-⏱️ Tempo trascorso: 2m 34s
+```bash
+npm install -g firebase-tools
+firebase login
+firebase use spotifymigrationtool-d722b
 ```
 
----
+### Deploy
 
-## 🛠️ Troubleshooting
+```bash
+npm run build
+firebase deploy --only hosting
+```
 
-### 🔴 **Errori Comuni**
+## Troubleshooting
 
-**❌ "INVALID_CLIENT: Invalid redirect URI"**
-- **Problema**: Redirect URI non configurati correttamente
-- **Soluzione**: Verifica che nell'app Spotify ci siano ESATTAMENTE:
-  - `http://localhost:5000/api/auth/source/callback`
-  - `http://localhost:5000/api/auth/destination/callback`
+### Invalid redirect URI
 
-**❌ "403 Forbidden" durante l'autenticazione**
-- **Problema**: Account non aggiunto come utente di test
-- **Soluzione**: Vai su User Management e aggiungi l'email dell'account
+Verifica che i Redirect URI su Spotify siano identici a quelli usati dall'app (schema, dominio, path e porta).
 
-**❌ "Cannot connect to server"**
-- **Problema**: Porta 5000 occupata
-- **Soluzione**: Cambia porta nel file `.env` (es. `PORT=3000`)
+### Login locale funziona ma produzione no
 
-**❌ App si chiude o errori NPM**
-- **Problema**: Dipendenze corrotte
-- **Soluzione**: 
-  ```bash
-  rm -rf node_modules client/node_modules
-  npm install
-  cd client && npm install && npm run build && cd ..
-  ```
+Controlla che [.env.production](.env.production) abbia la base URL corretta e che su Spotify siano presenti i redirect con dominio Firebase.
 
-### 🟡 **Avvertimenti Non Critici**
+### 403 durante auth
 
-**⚠️ "Source and destination accounts are the same"**
-- Non grave, ma inutile migrare da un account a se stesso
-
-**⚠️ "Some tracks could not be migrated"**
-- Normale per brani non disponibili nella regione o rimossi da Spotify
-
----
-
-## ❓ FAQ
-
-**❓ Posso usare account gratuiti?**
-- Sì! Funziona con account gratuiti e premium
-
-**❓ I miei dati sono sicuri?**
-- Assolutamente sì. L'app non salva credenziali, usa solo API ufficiali Spotify
-
-**❓ Quanti brani posso migrare?**
-- Teoricamente illimitati (gestisce automaticamente migliaia di brani)
-
-**❓ Cosa succede se interrompo la migrazione?**
-- Puoi fermare e riavviare quando vuoi, evita automaticamente i duplicati
-
-**❓ Funziona su Mac/Linux?**
-- Sì, funziona su qualsiasi sistema con Node.js
-
-**❓ Posso migrare tra paesi diversi?**
-- Sì, ma alcuni brani potrebbero non essere disponibili per motivi di licensing
-
----
-
-## 🆘 Supporto
-
-**Hai problemi?**
-- 🐛 [Segnala Bug](https://github.com/tomzdev/spotify-migration-tool/issues)
-- 💬 [Discussioni](https://github.com/tomzdev/spotify-migration-tool/discussions)
-- 📚 [Documentazione Completa](https://github.com/tomzdev/spotify-migration-tool/wiki)
-
-**Prima di chiedere aiuto:**
-1. Controlla questa guida
-2. Verifica la sezione Troubleshooting
-3. Cerca nelle Issues esistenti 
+L'account va aggiunto in Spotify Developer Dashboard nella sezione User Management (se app in modalita sviluppo).

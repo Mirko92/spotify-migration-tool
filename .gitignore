@@ -30,7 +30,7 @@ Thumbs.db
 *.swp
 *.swo
 
-!client/.env.example
+!.env.example
 
 # Build files
-client/dist/
+dist/

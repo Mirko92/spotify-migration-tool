@@ -15,12 +15,6 @@ const Preview = ({ authStatus }) => {
     followedUsers: []
   });
   
-  // Aggiungiamo stati per la paginazione
-  const [pagination, setPagination] = useState({
-    savedTracks: { page: 1, perPage: 50, total: 0 },
-    followedArtists: { page: 1, perPage: 50, total: 0 }
-  });
-  
   const initialSelectionState = {
     playlists: [],
     savedTracks: false,
@@ -51,11 +45,6 @@ const Preview = ({ authStatus }) => {
           followedArtists: previewData.followedArtists || [],
           followedUsers: []
         }));
-        
-        setPagination(prev => ({
-          savedTracks: { ...prev.savedTracks, total: previewData.savedTracks.length },
-          followedArtists: { ...prev.followedArtists, total: previewData.followedArtists.length }
-        }));
       } catch (error) {
         console.error('Error fetching data:', error);
         toast.error('Failed to load data from your Spotify account');
@@ -65,7 +54,7 @@ const Preview = ({ authStatus }) => {
     };
 
     fetchData();
-  }, [pagination.savedTracks.page, pagination.followedArtists.page]);
+  }, []);
 
   // Rimuoviamo la gestione dei log poiché non più necessaria
   const addLog = (message, type = 'info') => {
@@ -309,22 +298,6 @@ const Preview = ({ authStatus }) => {
       console.error('Error saving selection:', error);
       toast.error('Errore nel salvataggio delle selezioni');
     }
-  };
-
-  // Funzione per caricare più dati
-  const loadMore = (type) => {
-    setPagination(prev => ({
-      ...prev,
-      [type]: {
-        ...prev[type],
-        page: prev[type].page + 1
-      }
-    }));
-  };
-
-  // Funzione per verificare se ci sono più dati da caricare
-  const hasMore = (type) => {
-    return data[type].length < pagination[type].total;
   };
 
   if (loading) {
@@ -586,7 +559,7 @@ const Preview = ({ authStatus }) => {
                 </Box>
                 
                 <List sx={{ maxHeight: 300, overflow: 'auto' }}>
-                  {data.savedTracks.slice(0, pagination.savedTracks.page * pagination.savedTracks.perPage).map((item) => (
+                  {data.savedTracks.map((item) => (
                     <ListItem key={item.track.id} dense>
                       <ListItemText 
                         primary={item.track.name} 
@@ -604,18 +577,6 @@ const Preview = ({ authStatus }) => {
                       />
                     </ListItem>
                   ))}
-                  {hasMore('savedTracks') && (
-                    <Button
-                      fullWidth
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        loadMore('savedTracks');
-                      }}
-                      disabled={loading}
-                    >
-                      {loading ? 'Caricamento...' : 'Carica altri brani'}
-                    </Button>
-                  )}
                 </List>
               </Box>
             )}
@@ -692,7 +653,7 @@ const Preview = ({ authStatus }) => {
                 </Box>
                 
                 <List sx={{ maxHeight: 300, overflow: 'auto' }}>
-                  {data.followedArtists.slice(0, pagination.followedArtists.page * pagination.followedArtists.perPage).map((artist) => (
+                  {data.followedArtists.map((artist) => (
                     <ListItem key={artist.id} dense>
                       <ListItemText 
                         primary={artist.name} 
@@ -710,18 +671,6 @@ const Preview = ({ authStatus }) => {
                       />
                     </ListItem>
                   ))}
-                  {hasMore('followedArtists') && (
-                    <Button
-                      fullWidth
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        loadMore('followedArtists');
-                      }}
-                      disabled={loading}
-                    >
-                      {loading ? 'Caricamento...' : 'Carica altri artisti'}
-                    </Button>
-                  )}
                 </List>
               </Box>
             )}

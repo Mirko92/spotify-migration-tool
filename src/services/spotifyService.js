@@ -28,9 +28,19 @@ async function getAll(role, path, collectionKey) {
   while (offset < total) {
     const separator = path.includes('?') ? '&' : '?';
     const response = await spotifyRequest(role, `${path}${separator}limit=50&offset=${offset}`);
-    results.push(...(response[collectionKey] || []));
-    total = response.total || results.length;
-    offset += response.limit || 50;
+    const collection = response?.[collectionKey];
+    const items = Array.isArray(collection)
+      ? collection
+      : Array.isArray(collection?.items)
+        ? collection.items
+        : [];
+
+    results.push(...items);
+
+    const pageTotal = collection?.total ?? response?.total;
+    const pageLimit = collection?.limit ?? response?.limit ?? 50;
+    total = pageTotal ?? results.length;
+    offset += pageLimit;
   }
   return results;
 }
