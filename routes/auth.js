@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const SpotifyWebApi = require('spotify-web-api-node');
+const spotifyApi = require('./spotify-api');
 
 // Scopes for Spotify API access
 const SPOTIFY_SCOPES = [
@@ -19,32 +19,29 @@ const SPOTIFY_SCOPES = [
 ];
 
 // Single Spotify app configuration
-const spotifyApi = new SpotifyWebApi({
-  clientId: process.env.SPOTIFY_CLIENT_ID || process.env.SOURCE_CLIENT_ID, // Fallback per compatibilità
-  clientSecret: process.env.SPOTIFY_CLIENT_SECRET || process.env.SOURCE_CLIENT_SECRET,
-  redirectUri: process.env.SPOTIFY_REDIRECT_URI || process.env.SOURCE_REDIRECT_URI
-});
+const sourceRedirectUri = process.env.SPOTIFY_REDIRECT_URI || process.env.SOURCE_REDIRECT_URI;
 
 // Configurazione per account destinazione (usando la stessa app ma redirect diverso)
 const destRedirectUri = process.env.DEST_REDIRECT_URI || `${process.env.SPOTIFY_REDIRECT_URI}/destination` || 'http://localhost:5000/api/auth/destination/callback';
 
 console.log('Spotify app configuration:', {
-  clientId: spotifyApi.getClientId() ? `${spotifyApi.getClientId().substring(0, 5)}...` : 'Not set',
-  redirectUri: spotifyApi.getRedirectURI(),
+  clientId: spotifyApi.clientId ? `${spotifyApi.clientId.substring(0, 5)}...` : 'Not set',
+  redirectUri: sourceRedirectUri,
   destRedirectUri: destRedirectUri
 });
 
 // Login route for source account
 router.get('/source/login', (req, res) => {
-  // Pulisci la sessione precedente
   req.session.sourceTokens = null;
   req.session.sourceUser = null;
+  req.session.destTokens = null;
+  req.session.destUser = null;
   
   const state = 'source-' + Math.random().toString(36).substring(7);
   req.session.authState = state; // Salviamo lo state in sessione per verificarlo
   
-  const authorizeURL = spotifyApi.createAuthorizeURL(SPOTIFY_SCOPES, state, {
-    showDialog: true // Forza il popup di autorizzazione
+  const authorizeURL = spotifyApi.createAuthorizeUrl(sourceRedirectUri, SPOTIFY_SCOPES, state, {
+    showDialog: true
   });
   console.log('Source login redirect URL:', authorizeURL);
   res.redirect(authorizeURL);
@@ -84,7 +81,7 @@ router.get('/source/callback', async (req, res) => {
   try {
     console.log('Attempting source authorization code grant...');
     
-    const data = await spotifyApi.authorizationCodeGrant(code);
+    const data = await spotifyApi.exchangeCode(code, sourceRedirectUri);
     console.log('Source authorization successful, received tokens');
     console.log('Granted scopes:', data.body.scope || 'No scope information');
     
@@ -98,13 +95,7 @@ router.get('/source/callback', async (req, res) => {
     };
     
     // Create a separate API instance for source account
-    const sourceApiInstance = new SpotifyWebApi({
-      clientId: spotifyApi.getClientId(),
-      clientSecret: spotifyApi.getClientSecret(),
-      redirectUri: spotifyApi.getRedirectURI()
-    });
-    sourceApiInstance.setAccessToken(data.body.access_token);
-    sourceApiInstance.setRefreshToken(data.body.refresh_token);
+    const sourceApiInstance = spotifyApi.createSpotifyApi(data.body.access_token);
     
     // Get user profile
     console.log('Fetching source user profile...');
@@ -166,14 +157,8 @@ router.get('/destination/login', (req, res) => {
   req.session.authState = state;
   
   // Temporarily change redirect URI for destination account
-  const tempSpotifyApi = new SpotifyWebApi({
-    clientId: spotifyApi.getClientId(),
-    clientSecret: spotifyApi.getClientSecret(),
-    redirectUri: destRedirectUri
-  });
-  
-  const authorizeURL = tempSpotifyApi.createAuthorizeURL(SPOTIFY_SCOPES, state, {
-    showDialog: true // Forza il popup di autorizzazione per cambiare account
+  const authorizeURL = spotifyApi.createAuthorizeUrl(destRedirectUri, SPOTIFY_SCOPES, state, {
+    showDialog: true
   });
   console.log('Destination login redirect URL:', authorizeURL);
   res.redirect(authorizeURL);
@@ -210,13 +195,7 @@ router.get('/destination/callback', async (req, res) => {
     console.log('Attempting destination authorization code grant...');
     
     // Use temporary API instance with destination redirect URI
-    const tempSpotifyApi = new SpotifyWebApi({
-      clientId: spotifyApi.getClientId(),
-      clientSecret: spotifyApi.getClientSecret(),
-      redirectUri: destRedirectUri
-    });
-    
-    const data = await tempSpotifyApi.authorizationCodeGrant(code);
+    const data = await spotifyApi.exchangeCode(code, destRedirectUri);
     console.log('Destination authorization successful, received tokens');
     console.log('Granted scopes:', data.body.scope || 'No scope information');
     
@@ -230,13 +209,7 @@ router.get('/destination/callback', async (req, res) => {
     };
     
     // Create a separate API instance for destination account
-    const destApiInstance = new SpotifyWebApi({
-      clientId: spotifyApi.getClientId(),
-      clientSecret: spotifyApi.getClientSecret(),
-      redirectUri: destRedirectUri
-    });
-    destApiInstance.setAccessToken(data.body.access_token);
-    destApiInstance.setRefreshToken(data.body.refresh_token);
+    const destApiInstance = spotifyApi.createSpotifyApi(data.body.access_token);
     
     // Get user profile
     console.log('Fetching destination user profile...');
@@ -247,7 +220,9 @@ router.get('/destination/callback', async (req, res) => {
     // Verifica che non sia lo stesso account
     if (req.session.sourceUser && req.session.sourceUser.id === userProfile.body.id) {
       console.warn('Warning: Source and destination accounts are the same user!');
-      // Non blocchiamo, ma avvertiamo
+      req.session.destTokens = null;
+      req.session.destUser = null;
+      return res.redirect('/error?message=Source and destination accounts must be different&debug=true');
     }
     
     // Clear auth state
@@ -290,20 +265,7 @@ router.get('/destination/callback', async (req, res) => {
 
 // Helper function to create API instance for account
 const createApiInstance = (tokens, redirectUri = null) => {
-  const apiInstance = new SpotifyWebApi({
-    clientId: spotifyApi.getClientId(),
-    clientSecret: spotifyApi.getClientSecret(),
-    redirectUri: redirectUri || spotifyApi.getRedirectURI()
-  });
-  
-  if (tokens) {
-    apiInstance.setAccessToken(tokens.accessToken);
-    if (tokens.refreshToken) {
-      apiInstance.setRefreshToken(tokens.refreshToken);
-    }
-  }
-  
-  return apiInstance;
+  return spotifyApi.createSpotifyApi(tokens?.accessToken);
 };
 
 // Auth status route
@@ -366,8 +328,7 @@ const refreshSourceToken = async (req, res, next) => {
   if (tokenAge > (tokenExpiry - 300000)) {
     try {
       console.log('Refreshing source access token...');
-      const sourceApi = createApiInstance(tokens);
-      const data = await sourceApi.refreshAccessToken();
+      const data = await spotifyApi.refreshAccessToken(tokens.refreshToken);
       
       // Update tokens in session
       req.session.sourceTokens = {
@@ -400,8 +361,7 @@ const refreshDestToken = async (req, res, next) => {
   if (tokenAge > (tokenExpiry - 300000)) {
     try {
       console.log('Refreshing destination access token...');
-      const destApi = createApiInstance(tokens, destRedirectUri);
-      const data = await destApi.refreshAccessToken();
+      const data = await spotifyApi.refreshAccessToken(tokens.refreshToken);
       
       req.session.destTokens = {
         ...tokens,

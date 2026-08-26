@@ -14,7 +14,7 @@ export const getAuthStatus = async () => {
 // Logout from source account only
 export const logoutSource = async () => {
   try {
-    await axios.get('/api/auth/logout/source');
+    await axios.post('/api/auth/logout/source');
     return true;
   } catch (error) {
     console.error('Error during source logout:', error);
@@ -25,7 +25,7 @@ export const logoutSource = async () => {
 // Logout from destination account only
 export const logoutDestination = async () => {
   try {
-    await axios.get('/api/auth/logout/destination');
+    await axios.post('/api/auth/logout/destination');
     return true;
   } catch (error) {
     console.error('Error during destination logout:', error);
@@ -36,7 +36,7 @@ export const logoutDestination = async () => {
 // Logout from both accounts
 export const logout = async () => {
   try {
-    await axios.get('/api/auth/logout');
+    await axios.post('/api/auth/logout');
     return true;
   } catch (error) {
     console.error('Error during logout:', error);

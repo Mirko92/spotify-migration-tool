@@ -50,7 +50,8 @@ const Preview = ({ authStatus }) => {
         const savedTracksRes = await axios.get('/api/migration/saved-tracks', {
           params: {
             page: pagination.savedTracks.page,
-            perPage: pagination.savedTracks.perPage
+            perPage: pagination.savedTracks.perPage,
+            all: true
           }
         });
         
@@ -58,7 +59,8 @@ const Preview = ({ authStatus }) => {
         const followedArtistsRes = await axios.get('/api/migration/followed-artists', {
           params: {
             page: pagination.followedArtists.page,
-            perPage: pagination.followedArtists.perPage
+            perPage: pagination.followedArtists.perPage,
+            all: true
           }
         });
         
@@ -457,7 +459,7 @@ const Preview = ({ authStatus }) => {
                   <ListItem dense>
                     <ListItemText 
                       primary={playlist.name} 
-                      secondary={`${playlist.tracks.total} brani`} 
+                      secondary={`${playlist.items?.total ?? playlist.tracks?.total ?? 0} brani`} 
                       onClick={(e) => {
                         e.stopPropagation();
                         handlePlaylistToggle(playlist.id);

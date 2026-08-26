@@ -139,8 +139,8 @@ const checkTrackSaved = async (trackId, req) => {
 router.get('/playlists', [auth.refreshSourceToken, ensureAuthenticated], async (req, res) => {
   try {
     const { sourceApi } = getApiInstances(req);
-    const data = await sourceApi.getUserPlaylists(req.session.sourceUser.id, { limit: 50 });
-    res.json({ playlists: data.body.items });
+    const data = await sourceApi.getUserPlaylists({ limit: 50 });
+    res.json({ playlists: data.body.items, total: data.body.total });
   } catch (error) {
     console.error('Error fetching playlists:', error);
     res.status(500).json({ error: 'Failed to fetch playlists' });
@@ -151,30 +151,24 @@ router.get('/playlists', [auth.refreshSourceToken, ensureAuthenticated], async (
 router.get('/saved-tracks', [auth.refreshSourceToken, ensureAuthenticated], async (req, res) => {
   try {
     const { sourceApi } = getApiInstances(req);
-    
-    // Get all saved tracks from source account with pagination
-    let tracks = [];
-    let offset = 0;
-    const limit = 50;
-    let total = 1; // Initial value to enter the loop
-    
-    while (offset < total) {
-      const tracksResponse = await sourceApi.getMySavedTracks({
-        offset,
-        limit
-      });
-      
+    const page = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(Number.parseInt(req.query.perPage, 10) || 50, 1), 50);
+    const tracks = [];
+    let offset = req.query.all === 'true' ? 0 : (page - 1) * limit;
+    let total = 0;
+    let tracksResponse;
+
+    do {
+      tracksResponse = await sourceApi.getMySavedTracks({ offset, limit });
+      tracks.push(...tracksResponse.body.items);
       total = tracksResponse.body.total;
-      tracks = tracks.concat(tracksResponse.body.items);
       offset += limit;
-      
-      // Break if we've fetched all tracks or reached a reasonable limit
-      if (tracks.length >= total || offset >= 2000) {
-        break;
-      }
-    }
-    
-    res.json({ tracks: tracks });
+    } while (req.query.all === 'true' && offset < total);
+
+    res.json({
+      tracks,
+      total
+    });
   } catch (error) {
     console.error('Error fetching saved tracks:', error);
     res.status(500).json({ error: 'Failed to fetch saved tracks' });
@@ -185,31 +179,33 @@ router.get('/saved-tracks', [auth.refreshSourceToken, ensureAuthenticated], asyn
 router.get('/followed-artists', [auth.refreshSourceToken, ensureAuthenticated], async (req, res) => {
   try {
     const { sourceApi } = getApiInstances(req);
-    
-    // Get all followed artists from source account with pagination
-    let artists = [];
-    let after = null;
-    const limit = 50;
-    
-    do {
-      const artistsResponse = await sourceApi.getFollowedArtists({
+    const page = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(Number.parseInt(req.query.perPage, 10) || 50, 1), 50);
+    let after;
+    let artistsResponse;
+    let pageArtists = [];
+    const artists = [];
+
+    for (let currentPage = 1; currentPage <= (req.query.all === 'true' ? Number.MAX_SAFE_INTEGER : page); currentPage += 1) {
+      artistsResponse = await sourceApi.getFollowedArtists({
         limit,
-        after
+        ...(after ? { after } : {})
       });
-      
-      const newArtists = artistsResponse.body.artists.items;
-      artists = artists.concat(newArtists);
-      
-      // Update the after parameter for pagination
-      after = newArtists.length > 0 ? newArtists[newArtists.length - 1].id : null;
-      
-      // Break if we got fewer artists than the limit (last page)
-      if (newArtists.length < limit) {
+      pageArtists = artistsResponse.body.artists.items;
+      artists.push(...pageArtists);
+      after = pageArtists.length > 0 ? pageArtists[pageArtists.length - 1].id : null;
+      if (pageArtists.length < limit || !after) {
+        if (currentPage < page) {
+          pageArtists = [];
+        }
         break;
       }
-    } while (after);
-    
-    res.json({ artists: artists });
+    }
+
+    res.json({
+      artists: req.query.all === 'true' ? artists : pageArtists,
+      total: artistsResponse.body.artists.total
+    });
   } catch (error) {
     console.error('Error fetching followed artists:', error);
     res.status(500).json({ error: 'Failed to fetch followed artists' });
@@ -700,7 +696,7 @@ router.post('/migrate/saved-tracks', [auth.refreshSourceToken, auth.refreshDestT
     migrationLog.push(`Inizio migrazione di ${savedTrackIds.length} brani preferiti...`);
     
     // Verifica quali brani sono già salvati nell'account di destinazione
-    const batchCheckSize = 50;
+    const batchCheckSize = 40;
     let alreadySavedTracks = [];
     
     for (let i = 0; i < savedTrackIds.length; i += batchCheckSize) {
@@ -742,7 +738,7 @@ router.post('/migrate/saved-tracks', [auth.refreshSourceToken, auth.refreshDestT
     migrationLog.push(`Migrazione di ${tracksToMigrate.length} brani non ancora salvati...`);
     
     // Aggiungi i brani in batch
-    const batchSize = 50;
+    const batchSize = 40;
     let migratedCount = 0;
     
     for (let i = 0; i < tracksToMigrate.length; i += batchSize) {
@@ -843,7 +839,7 @@ router.post('/migrate/followed-artists', [auth.refreshSourceToken, auth.refreshD
     migrationLog.push(`Inizio migrazione di ${followedArtistIds.length} artisti...`);
     
     // Verifica quali artisti sono già seguiti nell'account di destinazione
-    const batchCheckSize = 50;
+    const batchCheckSize = 40;
     let alreadyFollowedArtists = [];
     
     for (let i = 0; i < followedArtistIds.length; i += batchCheckSize) {
@@ -885,7 +881,7 @@ router.post('/migrate/followed-artists', [auth.refreshSourceToken, auth.refreshD
     migrationLog.push(`Seguendo ${artistsToFollow.length} artisti non ancora seguiti...`);
     
     // Segui gli artisti in batch
-    const batchSize = 50;
+    const batchSize = 40;
     let migratedCount = 0;
     
     for (let i = 0; i < artistsToFollow.length; i += batchSize) {

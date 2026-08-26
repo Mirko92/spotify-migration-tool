@@ -5,7 +5,6 @@ const session = require('express-session');
 const morgan = require('morgan');
 const path = require('path');
 const winston = require('winston');
-const SpotifyWebApi = require('spotify-web-api-node');
 
 // Initialize Express app
 const app = express();
