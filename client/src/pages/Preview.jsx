@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Typography, Box, Paper, Grid, Button, Checkbox, List, ListItem, ListItemText, ListItemIcon, Divider, CircularProgress, FormControlLabel } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { toast } from 'react-toastify';
 import LogViewer from '../components/LogViewer';
+import { getPlaylistTracks, getPreviewData } from '../services/spotifyService';
 
 const Preview = ({ authStatus }) => {
   const navigate = useNavigate();
@@ -43,38 +43,18 @@ const Preview = ({ authStatus }) => {
       try {
         setLoading(true);
         
-        // Fetch playlists
-        const playlistsRes = await axios.get('/api/migration/playlists');
-        
-        // Fetch saved tracks con paginazione
-        const savedTracksRes = await axios.get('/api/migration/saved-tracks', {
-          params: {
-            page: pagination.savedTracks.page,
-            perPage: pagination.savedTracks.perPage,
-            all: true
-          }
-        });
-        
-        // Fetch followed artists con paginazione
-        const followedArtistsRes = await axios.get('/api/migration/followed-artists', {
-          params: {
-            page: pagination.followedArtists.page,
-            perPage: pagination.followedArtists.perPage,
-            all: true
-          }
-        });
+        const previewData = await getPreviewData();
         
         setData(prev => ({
-          playlists: playlistsRes.data.playlists || [],
-          savedTracks: [...prev.savedTracks, ...(savedTracksRes.data.tracks || [])],
-          followedArtists: [...prev.followedArtists, ...(followedArtistsRes.data.artists || [])],
+          playlists: previewData.playlists || [],
+          savedTracks: previewData.savedTracks || [],
+          followedArtists: previewData.followedArtists || [],
           followedUsers: []
         }));
-
-        // Aggiorna i totali per la paginazione
+        
         setPagination(prev => ({
-          savedTracks: { ...prev.savedTracks, total: savedTracksRes.data.total || 0 },
-          followedArtists: { ...prev.followedArtists, total: followedArtistsRes.data.total || 0 }
+          savedTracks: { ...prev.savedTracks, total: previewData.savedTracks.length },
+          followedArtists: { ...prev.followedArtists, total: previewData.followedArtists.length }
         }));
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -126,8 +106,8 @@ const Preview = ({ authStatus }) => {
     if (!expandedPlaylists[playlistId]) {
       try {
         // Carica le tracce della playlist
-        const response = await axios.get(`/api/migration/playlist-tracks/${playlistId}`);
-        const tracks = response.data.tracks || [];
+        const response = await getPlaylistTracks(playlistId);
+        const tracks = response.tracks || [];
         
         // Aggiorna i dati delle playlist con le tracce
         setData(prev => ({

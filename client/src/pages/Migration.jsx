@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Typography, Box, Paper, Button, CircularProgress, List, ListItem, ListItemText, Alert, FormGroup, FormControlLabel, Checkbox } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { toast } from 'react-toastify';
+import { migrate } from '../services/spotifyService';
 
 const Migration = ({ authStatus }) => {
   const navigate = useNavigate();
@@ -57,16 +57,16 @@ const Migration = ({ authStatus }) => {
       setLoading(true);
       
       // Invia la richiesta di migrazione con le opzioni di default
-      const response = await axios.post('/api/migration/migrate', {
+      const response = await migrate({
         ...migrationData,
         followNonUserPlaylists: true, // Opzione di default
         transferImages: true // Opzione di default
       });
       
       // Aggiorna lo stato con i risultati
-      setMigrationStatus(response.data.success ? 'completed' : 'failed');
-      setMigrationLog(response.data.log || []);
-      setErrors(response.data.errors || []);
+      setMigrationStatus(response.success ? 'completed' : 'failed');
+      setMigrationLog(response.log || []);
+      setErrors(response.errors || []);
       
       // Pulisci il localStorage
       localStorage.removeItem('selectedPlaylists');

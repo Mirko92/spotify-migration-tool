@@ -7,7 +7,7 @@ import {
   Security as SecurityIcon,
   CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
-import axios from 'axios';
+import { completeLogin, startLogin } from '../services/authService';
 
 const AuthDestination = () => {
   const navigate = useNavigate();
@@ -26,33 +26,16 @@ const AuthDestination = () => {
     }
     
     if (code) {
-      // We're returning from Spotify with an auth code
       setLoading(true);
-      
-      // The actual auth is handled by the backend
-      // We just need to redirect to the right page after auth completes
-      axios.get('/api/auth/status')
-        .then(response => {
-          setLoading(false);
-          
-          if (response.data.destAuthenticated) {
-            navigate('/preview');
-          } else {
-            setError('Autenticazione fallita. Riprova.');
-          }
-        })
-        .catch(err => {
-          console.error('Error checking auth status:', err);
-          setLoading(false);
-          setError('Errore durante il controllo dello stato di autenticazione');
-        });
+      completeLogin('destination')
+        .then(() => navigate('/preview'))
+        .catch(err => { setLoading(false); setError(err.message); });
     }
   }, [navigate]);
 
   const handleAuth = () => {
     setLoading(true);
-    // Redirect to backend auth route
-    window.location.href = '/api/auth/destination/login';
+    startLogin('destination').catch(err => { setLoading(false); setError(err.message); });
   };
 
   const steps = ['Connetti Sorgente', 'Connetti Destinazione', 'Migrazione'];
