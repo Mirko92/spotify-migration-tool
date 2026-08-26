@@ -6,14 +6,8 @@ import path from 'path';
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 3000,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:5000',
-        changeOrigin: true,
-        secure: false
-      }
-    }
+    host: '127.0.0.1',
+    port: 5173
   },
   resolve: {
     alias: {
@@ -25,8 +19,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          utils: ['axios', 'lodash']
+          vendor: ['react', 'react-dom', 'react-router-dom']
         }
       }
     }

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Typography, Box, Paper, Grid, Button, Checkbox, List, ListItem, ListItemText, ListItemIcon, Divider, CircularProgress, FormControlLabel } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { toast } from 'react-toastify';
 import LogViewer from '../components/LogViewer';
+import { getPlaylistTracks, getPreviewData } from '../services/spotifyService';
 
 const Preview = ({ authStatus }) => {
   const navigate = useNavigate();
@@ -13,12 +13,6 @@ const Preview = ({ authStatus }) => {
     savedTracks: [],
     followedArtists: [],
     followedUsers: []
-  });
-  
-  // Aggiungiamo stati per la paginazione
-  const [pagination, setPagination] = useState({
-    savedTracks: { page: 1, perPage: 50, total: 0 },
-    followedArtists: { page: 1, perPage: 50, total: 0 }
   });
   
   const initialSelectionState = {
@@ -43,38 +37,13 @@ const Preview = ({ authStatus }) => {
       try {
         setLoading(true);
         
-        // Fetch playlists
-        const playlistsRes = await axios.get('/api/migration/playlists');
-        
-        // Fetch saved tracks con paginazione
-        const savedTracksRes = await axios.get('/api/migration/saved-tracks', {
-          params: {
-            page: pagination.savedTracks.page,
-            perPage: pagination.savedTracks.perPage,
-            all: true
-          }
-        });
-        
-        // Fetch followed artists con paginazione
-        const followedArtistsRes = await axios.get('/api/migration/followed-artists', {
-          params: {
-            page: pagination.followedArtists.page,
-            perPage: pagination.followedArtists.perPage,
-            all: true
-          }
-        });
+        const previewData = await getPreviewData();
         
         setData(prev => ({
-          playlists: playlistsRes.data.playlists || [],
-          savedTracks: [...prev.savedTracks, ...(savedTracksRes.data.tracks || [])],
-          followedArtists: [...prev.followedArtists, ...(followedArtistsRes.data.artists || [])],
+          playlists: previewData.playlists || [],
+          savedTracks: previewData.savedTracks || [],
+          followedArtists: previewData.followedArtists || [],
           followedUsers: []
-        }));
-
-        // Aggiorna i totali per la paginazione
-        setPagination(prev => ({
-          savedTracks: { ...prev.savedTracks, total: savedTracksRes.data.total || 0 },
-          followedArtists: { ...prev.followedArtists, total: followedArtistsRes.data.total || 0 }
         }));
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -85,7 +54,7 @@ const Preview = ({ authStatus }) => {
     };
 
     fetchData();
-  }, [pagination.savedTracks.page, pagination.followedArtists.page]);
+  }, []);
 
   // Rimuoviamo la gestione dei log poiché non più necessaria
   const addLog = (message, type = 'info') => {
@@ -126,8 +95,8 @@ const Preview = ({ authStatus }) => {
     if (!expandedPlaylists[playlistId]) {
       try {
         // Carica le tracce della playlist
-        const response = await axios.get(`/api/migration/playlist-tracks/${playlistId}`);
-        const tracks = response.data.tracks || [];
+        const response = await getPlaylistTracks(playlistId);
+        const tracks = response.tracks || [];
         
         // Aggiorna i dati delle playlist con le tracce
         setData(prev => ({
@@ -329,22 +298,6 @@ const Preview = ({ authStatus }) => {
       console.error('Error saving selection:', error);
       toast.error('Errore nel salvataggio delle selezioni');
     }
-  };
-
-  // Funzione per caricare più dati
-  const loadMore = (type) => {
-    setPagination(prev => ({
-      ...prev,
-      [type]: {
-        ...prev[type],
-        page: prev[type].page + 1
-      }
-    }));
-  };
-
-  // Funzione per verificare se ci sono più dati da caricare
-  const hasMore = (type) => {
-    return data[type].length < pagination[type].total;
   };
 
   if (loading) {
@@ -606,7 +559,7 @@ const Preview = ({ authStatus }) => {
                 </Box>
                 
                 <List sx={{ maxHeight: 300, overflow: 'auto' }}>
-                  {data.savedTracks.slice(0, pagination.savedTracks.page * pagination.savedTracks.perPage).map((item) => (
+                  {data.savedTracks.map((item) => (
                     <ListItem key={item.track.id} dense>
                       <ListItemText 
                         primary={item.track.name} 
@@ -624,18 +577,6 @@ const Preview = ({ authStatus }) => {
                       />
                     </ListItem>
                   ))}
-                  {hasMore('savedTracks') && (
-                    <Button
-                      fullWidth
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        loadMore('savedTracks');
-                      }}
-                      disabled={loading}
-                    >
-                      {loading ? 'Caricamento...' : 'Carica altri brani'}
-                    </Button>
-                  )}
                 </List>
               </Box>
             )}
@@ -712,7 +653,7 @@ const Preview = ({ authStatus }) => {
                 </Box>
                 
                 <List sx={{ maxHeight: 300, overflow: 'auto' }}>
-                  {data.followedArtists.slice(0, pagination.followedArtists.page * pagination.followedArtists.perPage).map((artist) => (
+                  {data.followedArtists.map((artist) => (
                     <ListItem key={artist.id} dense>
                       <ListItemText 
                         primary={artist.name} 
@@ -730,18 +671,6 @@ const Preview = ({ authStatus }) => {
                       />
                     </ListItem>
                   ))}
-                  {hasMore('followedArtists') && (
-                    <Button
-                      fullWidth
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        loadMore('followedArtists');
-                      }}
-                      disabled={loading}
-                    >
-                      {loading ? 'Caricamento...' : 'Carica altri artisti'}
-                    </Button>
-                  )}
                 </List>
               </Box>
             )}

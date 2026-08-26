@@ -4,7 +4,6 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import InfoIcon from '@mui/icons-material/Info';
 import BugReportIcon from '@mui/icons-material/BugReport';
 import { useNavigate, useLocation } from 'react-router-dom';
-import axios from 'axios';
 import { toast } from 'react-toastify';
 
 const Error = () => {
@@ -41,18 +40,10 @@ const Error = () => {
   const fetchServerLogs = async () => {
     try {
       setLoadingLogs(true);
-      // Chiamata all'endpoint API per recuperare i log di debug
-      const response = await axios.get('/api/debug/logs');
-      if (response.data && response.data.logs) {
-        setServerLogs(response.data.logs);
-      } else {
-        // Fallback in caso di risposta vuota
-        setServerLogs([
-          { timestamp: new Date(), message: 'Tentativo di autenticazione fallito', type: 'error' },
-          { timestamp: new Date(), message: 'Verifica le credenziali nel file .env', type: 'info' },
-          { timestamp: new Date(), message: 'Controlla che i redirect URI siano configurati correttamente nel Spotify Developer Dashboard', type: 'info' }
-        ]);
-      }
+      setServerLogs([
+        { timestamp: new Date(), message: 'Tentativo di autenticazione fallito', type: 'error' },
+        { timestamp: new Date(), message: 'Controlla i redirect URI nel Spotify Developer Dashboard', type: 'info' }
+      ]);
     } catch (error) {
       console.error('Errore nel recupero dei log:', error);
       toast.error('Impossibile recuperare i log dal server');

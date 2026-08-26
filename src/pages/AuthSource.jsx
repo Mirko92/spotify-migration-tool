@@ -1,18 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { Container, Typography, Box, Button, CircularProgress, Paper, Card, Alert, Stepper, Step, StepLabel, Grid } from '@mui/material';
+import { Container, Typography, Box, Button, CircularProgress, Paper, Card, CardContent, Alert, Stepper, Step, StepLabel, Grid } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { 
   MusicNote as MusicNoteIcon,
-  SwapHoriz as SwapHorizIcon,
+  AccountCircle as AccountCircleIcon,
   Security as SecurityIcon,
   CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
-import axios from 'axios';
+import { completeLogin, getRedirectUri, startLogin } from '../services/authService';
 
-const AuthDestination = () => {
+const AuthSource = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const sourceRedirectUri = getRedirectUri('source');
 
   useEffect(() => {
     // Check if we're returning from Spotify auth
@@ -26,33 +27,16 @@ const AuthDestination = () => {
     }
     
     if (code) {
-      // We're returning from Spotify with an auth code
       setLoading(true);
-      
-      // The actual auth is handled by the backend
-      // We just need to redirect to the right page after auth completes
-      axios.get('/api/auth/status')
-        .then(response => {
-          setLoading(false);
-          
-          if (response.data.destAuthenticated) {
-            navigate('/preview');
-          } else {
-            setError('Autenticazione fallita. Riprova.');
-          }
-        })
-        .catch(err => {
-          console.error('Error checking auth status:', err);
-          setLoading(false);
-          setError('Errore durante il controllo dello stato di autenticazione');
-        });
+      completeLogin('source')
+        .then(() => navigate(localStorage.getItem('spotify_destination') ? '/preview' : '/auth/destination'))
+        .catch(err => { setLoading(false); setError(err.message); });
     }
   }, [navigate]);
 
   const handleAuth = () => {
     setLoading(true);
-    // Redirect to backend auth route
-    window.location.href = '/api/auth/destination/login';
+    startLogin('source').catch(err => { setLoading(false); setError(err.message); });
   };
 
   const steps = ['Connetti Sorgente', 'Connetti Destinazione', 'Migrazione'];
@@ -71,7 +55,7 @@ const AuthDestination = () => {
           }}
         >
           <Box sx={{ mb: 3 }}>
-            <SwapHorizIcon sx={{ fontSize: 60, color: '#1DB954', mb: 2 }} />
+            <MusicNoteIcon sx={{ fontSize: 60, color: '#1DB954', mb: 2 }} />
             <CircularProgress 
               size={60} 
               thickness={4}
@@ -88,7 +72,7 @@ const AuthDestination = () => {
             Autenticazione in corso...
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            Ti stiamo reindirizzando a Spotify per autorizzare l'account destinazione
+            Ti stiamo reindirizzando a Spotify per autorizzare l'accesso
           </Typography>
         </Card>
       </Container>
@@ -99,7 +83,7 @@ const AuthDestination = () => {
     <Container maxWidth="md" sx={{ py: 6 }}>
       {/* Progress Stepper */}
       <Box sx={{ mb: 6 }}>
-        <Stepper activeStep={1} alternativeLabel>
+        <Stepper activeStep={0} alternativeLabel>
           {steps.map((label, index) => (
             <Step key={label}>
               <StepLabel
@@ -148,7 +132,7 @@ const AuthDestination = () => {
             }}
           >
             <Box sx={{ mb: 4 }}>
-              <SwapHorizIcon 
+              <AccountCircleIcon 
                 sx={{ 
                   fontSize: 80, 
                   color: '#1DB954',
@@ -167,7 +151,7 @@ const AuthDestination = () => {
                   backgroundClip: 'text'
                 }}
               >
-                Connetti Account Destinazione
+                Connetti Account Sorgente
               </Typography>
             </Box>
             
@@ -177,7 +161,7 @@ const AuthDestination = () => {
               color="text.secondary"
               sx={{ mb: 4, lineHeight: 1.6 }}
             >
-              Ottimo! Ora connetti il tuo account Spotify <strong>destinazione</strong> - quello verso cui vuoi trasferire i dati.
+              Prima di tutto, connetti il tuo account Spotify <strong>sorgente</strong> - quello da cui vuoi trasferire i dati.
             </Typography>
             
             {error && (
@@ -198,20 +182,36 @@ const AuthDestination = () => {
             <Box sx={{ mb: 4 }}>
               <Typography variant="body1" color="text.secondary" paragraph>
                 <SecurityIcon sx={{ verticalAlign: 'middle', mr: 1, color: '#1DB954' }} />
-                Anche questo account utilizzerà l'autenticazione OAuth2 sicura di Spotify
+                Utilizziamo l'autenticazione OAuth2 di Spotify per garantire la massima sicurezza
               </Typography>
               <Typography variant="body1" color="text.secondary">
                 <CheckCircleIcon sx={{ verticalAlign: 'middle', mr: 1, color: '#1DB954' }} />
-                Assicurati di utilizzare l'account Spotify corretto per la destinazione
+                I tuoi dati rimangono sempre sicuri e non vengono mai memorizzati sui nostri server
               </Typography>
             </Box>
+
+            <Alert severity="info" sx={{ mb: 4, textAlign: 'left', borderRadius: 2 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                Redirect URI usato per SOURCE
+              </Typography>
+              <Typography
+                variant="body2"
+                sx={{
+                  fontFamily: 'monospace',
+                  wordBreak: 'break-all',
+                  opacity: 0.95
+                }}
+              >
+                {sourceRedirectUri}
+              </Typography>
+            </Alert>
             
             <Button 
               variant="contained" 
               color="primary" 
               size="large"
               onClick={handleAuth}
-              startIcon={<SwapHorizIcon />}
+              startIcon={<MusicNoteIcon />}
               sx={{ 
                 px: 6, 
                 py: 2,
@@ -228,12 +228,12 @@ const AuthDestination = () => {
                 transition: 'all 0.3s ease'
               }}
             >
-              🎯 Connetti Account Destinazione
+              🚀 Connetti a Spotify
             </Button>
             
             <Box sx={{ mt: 4 }}>
               <Typography variant="body2" color="text.secondary" sx={{ opacity: 0.8 }}>
-                Una volta connesso, potrai selezionare cosa migrare tra i due account
+                Verrai reindirizzato a Spotify per autorizzare l'accesso in modo sicuro
               </Typography>
             </Box>
           </Paper>
@@ -243,4 +243,4 @@ const AuthDestination = () => {
   );
 };
 
-export default AuthDestination;
+export default AuthSource;
