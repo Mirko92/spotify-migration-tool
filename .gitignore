@@ -30,5 +30,5 @@ Thumbs.db
 *.swp
 *.swo
 
-# Build files (opzionale - puoi includerli se vuoi)
-# client/dist/
+# Build files
+client/dist/
