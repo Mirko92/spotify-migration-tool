@@ -74,16 +74,23 @@ async function addInBatches(role, path, values, batchSize = 100) {
   }
 }
 
+// PUT /me/library takes URIs in the query string, max 40 per request
+async function saveToLibrary(role, uris) {
+  for (let index = 0; index < uris.length; index += 40) {
+    const batch = uris.slice(index, index + 40).map(encodeURIComponent).join(',');
+    await spotifyRequest(role, `/me/library?uris=${batch}`, { method: 'PUT' });
+  }
+}
+
 export async function migrate(migrationData) {
   const log = [];
   const errors = [];
-  const destination = JSON.parse(localStorage.getItem('spotify_destination') || 'null');
 
   try {
     if (migrationData.playlists.length > 0) {
       for (const playlistId of migrationData.playlists) {
         const sourcePlaylist = await spotifyRequest('source', `/playlists/${encodeURIComponent(playlistId)}`);
-        const created = await spotifyRequest('destination', `/users/${encodeURIComponent(destination.profile.id)}/playlists`, {
+        const created = await spotifyRequest('destination', '/me/playlists', {
           method: 'POST',
           body: JSON.stringify({
             name: sourcePlaylist.name,
@@ -100,15 +107,12 @@ export async function migrate(migrationData) {
     }
 
     if (migrationData.savedTracks && migrationData.savedTrackIds.length > 0) {
-      await addInBatches('destination', '/me/tracks', migrationData.savedTrackIds.map(id => `spotify:track:${id}`), 40);
+      await saveToLibrary('destination', migrationData.savedTrackIds.map(id => `spotify:track:${id}`));
       log.push(`Brani preferiti migrati: ${migrationData.savedTrackIds.length}`);
     }
 
     if (migrationData.followedArtists && migrationData.followedArtistIds.length > 0) {
-      for (let index = 0; index < migrationData.followedArtistIds.length; index += 50) {
-        const ids = migrationData.followedArtistIds.slice(index, index + 50).join(',');
-        await spotifyRequest('destination', `/me/following?type=artist&ids=${ids}`, { method: 'PUT' });
-      }
+      await saveToLibrary('destination', migrationData.followedArtistIds.map(id => `spotify:artist:${id}`));
       log.push(`Artisti seguiti migrati: ${migrationData.followedArtistIds.length}`);
     }
   } catch (error) {
