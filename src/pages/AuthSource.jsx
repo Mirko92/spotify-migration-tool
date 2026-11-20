@@ -9,7 +9,7 @@ import {
 } from '@mui/icons-material';
 import { completeLogin, getRedirectUri, startLogin } from '../services/authService';
 
-const AuthSource = () => {
+const AuthSource = ({ onAuthChange }) => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -29,10 +29,15 @@ const AuthSource = () => {
     if (code) {
       setLoading(true);
       completeLogin('source')
-        .then(() => navigate(localStorage.getItem('spotify_destination') ? '/preview' : '/auth/destination'))
+        .then(async () => {
+          // Aggiorna lo stato globale prima di navigare, altrimenti Home e
+          // ProtectedRoute vedrebbero ancora l'account come non autenticato.
+          await onAuthChange?.();
+          navigate(localStorage.getItem('spotify_destination') ? '/preview' : '/auth/destination');
+        })
         .catch(err => { setLoading(false); setError(err.message); });
     }
-  }, [navigate]);
+  }, [navigate, onAuthChange]);
 
   const handleAuth = () => {
     setLoading(true);

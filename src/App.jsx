@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -60,6 +60,22 @@ const theme = createTheme({
   },
 });
 
+const bothAuthenticated = (status) => status.sourceAuthenticated && status.destAuthenticated;
+
+// Definito fuori da App: se fosse dichiarato dentro, a ogni render sarebbe un nuovo
+// tipo di componente e React rimonterebbe i figli (es. Preview rifarebbe le fetch).
+const ProtectedRoute = ({ children, authStatus, requiredAuth, redirectTo }) => {
+  if (authStatus.loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!requiredAuth(authStatus)) {
+    return <Navigate to={redirectTo} replace />;
+  }
+
+  return children;
+};
+
 function App() {
   const [authStatus, setAuthStatus] = useState({
     sourceAuthenticated: false,
@@ -69,35 +85,25 @@ function App() {
     loading: true,
   });
 
-  useEffect(() => {
-    const checkAuthStatus = async () => {
-      try {
-        const status = await getAuthStatus();
-        setAuthStatus({
-          ...status,
-          loading: false,
-        });
-      } catch (error) {
-        console.error('Error checking auth status:', error);
-        setAuthStatus(prev => ({ ...prev, loading: false }));
-      }
-    };
-
-    checkAuthStatus();
+  // Rilegge lo stato di auth da localStorage. Va richiamata dopo ogni login completato:
+  // la navigazione client-side non rimonta App, quindi senza refresh lo stato resterebbe
+  // quello letto al primo mount (prima che il token fosse salvato).
+  const refreshAuthStatus = useCallback(async () => {
+    try {
+      const status = await getAuthStatus();
+      setAuthStatus({
+        ...status,
+        loading: false,
+      });
+    } catch (error) {
+      console.error('Error checking auth status:', error);
+      setAuthStatus(prev => ({ ...prev, loading: false }));
+    }
   }, []);
 
-  // Protected route component
-  const ProtectedRoute = ({ children, requiredAuth, redirectTo }) => {
-    if (authStatus.loading) {
-      return <div>Loading...</div>;
-    }
-
-    if (!requiredAuth()) {
-      return <Navigate to={redirectTo} replace />;
-    }
-
-    return children;
-  };
+  useEffect(() => {
+    refreshAuthStatus();
+  }, [refreshAuthStatus]);
 
   return (
     <ThemeProvider theme={theme}>
@@ -108,26 +114,28 @@ function App() {
           <Routes>
             <Route path="/" element={<Home authStatus={authStatus} />} />
             
-            <Route path="/auth/source" element={<AuthSource />} />
-            <Route path="/auth/destination" element={<AuthDestination />} />
-            
-            <Route 
-              path="/preview" 
+            <Route path="/auth/source" element={<AuthSource onAuthChange={refreshAuthStatus} />} />
+            <Route path="/auth/destination" element={<AuthDestination onAuthChange={refreshAuthStatus} />} />
+
+            <Route
+              path="/preview"
               element={
-                <ProtectedRoute 
-                  requiredAuth={() => authStatus.sourceAuthenticated && authStatus.destAuthenticated}
+                <ProtectedRoute
+                  authStatus={authStatus}
+                  requiredAuth={bothAuthenticated}
                   redirectTo="/"
                 >
                   <Preview authStatus={authStatus} />
                 </ProtectedRoute>
-              } 
+              }
             />
-            
-            <Route 
-              path="/migration" 
+
+            <Route
+              path="/migration"
               element={
-                <ProtectedRoute 
-                  requiredAuth={() => authStatus.sourceAuthenticated && authStatus.destAuthenticated}
+                <ProtectedRoute
+                  authStatus={authStatus}
+                  requiredAuth={bothAuthenticated}
                   redirectTo="/"
                 >
                   <Migration authStatus={authStatus} />

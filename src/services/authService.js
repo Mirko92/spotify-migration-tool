@@ -96,7 +96,7 @@ export const startLogin = async (role) => {
   window.location.href = `${AUTH_ENDPOINT}?${params}`;
 };
 
-export const completeLogin = async (role) => {
+const exchangeCodeForToken = async (role) => {
   const clientId = getClientId();
   if (!clientId) {
     throw new Error('Spotify Client ID non configurato: inseriscilo nella home oppure impostalo in .env/.env.production');
@@ -136,6 +136,25 @@ export const completeLogin = async (role) => {
   localStorage.removeItem(pendingKey(role));
   window.history.replaceState({}, document.title, REDIRECT_PATHS[role]);
   return profile;
+};
+
+// L'authorization code di Spotify è monouso. React.StrictMode (in sviluppo) esegue
+// gli useEffect due volte, quindi completeLogin può essere chiamata due volte con lo
+// stesso code: la seconda riceverebbe invalid_grant e mostrerebbe un errore fugace.
+// Le chiamate concorrenti per lo stesso ruolo e code condividono la stessa promise.
+const inflightLogins = new Map();
+
+export const completeLogin = (role) => {
+  const code = new URLSearchParams(window.location.search).get('code');
+  const key = `${role}:${code}`;
+
+  if (code && inflightLogins.has(key)) {
+    return inflightLogins.get(key);
+  }
+
+  const promise = exchangeCodeForToken(role).finally(() => inflightLogins.delete(key));
+  if (code) inflightLogins.set(key, promise);
+  return promise;
 };
 
 export const getToken = async (role) => {
