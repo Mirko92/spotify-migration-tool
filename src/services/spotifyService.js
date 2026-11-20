@@ -17,7 +17,9 @@ async function spotifyRequest(role, path, options = {}) {
     const error = await response.json().catch(() => ({}));
     throw new Error(error.error?.message || `Spotify API error (${response.status})`);
   }
-  return response.status === 204 ? null : response.json();
+  // PUT /me/library answers 200 with an empty body
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
 }
 
 async function getAll(role, path, collectionKey) {
