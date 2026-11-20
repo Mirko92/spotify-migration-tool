@@ -9,7 +9,7 @@ import {
 } from '@mui/icons-material';
 import { completeLogin, getRedirectUri, startLogin } from '../services/authService';
 
-const AuthDestination = () => {
+const AuthDestination = ({ onAuthChange }) => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -29,10 +29,15 @@ const AuthDestination = () => {
     if (code) {
       setLoading(true);
       completeLogin('destination')
-        .then(() => navigate('/preview'))
+        .then(async () => {
+          // Aggiorna lo stato globale prima di navigare: /preview è protetta e,
+          // con lo stato vecchio, rimanderebbe subito alla home.
+          await onAuthChange?.();
+          navigate('/preview');
+        })
         .catch(err => { setLoading(false); setError(err.message); });
     }
-  }, [navigate]);
+  }, [navigate, onAuthChange]);
 
   const handleAuth = () => {
     setLoading(true);
