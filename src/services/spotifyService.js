@@ -90,17 +90,53 @@ async function saveToLibrary(role, uris) {
   }
 }
 
-export async function migrate(migrationData) {
+export async function migrate(migrationData, onProgress) {
   const log = [];
   const errors = [];
   const source = JSON.parse(localStorage.getItem('spotify_source') || 'null');
   const sourceUserId = source?.profile?.id;
 
+  const totalPlaylists = migrationData.playlists?.length || 0;
+  const totalTracksBatches = (migrationData.savedTracks && migrationData.savedTrackIds?.length > 0)
+    ? Math.ceil(migrationData.savedTrackIds.length / 40)
+    : 0;
+  const totalArtistBatches = (migrationData.followedArtists && migrationData.followedArtistIds?.length > 0)
+    ? Math.ceil(migrationData.followedArtistIds.length / 40)
+    : 0;
+
+  const totalUnits = totalPlaylists + totalTracksBatches + totalArtistBatches || 1;
+  let completedUnits = 0;
+
+  const emitProgress = (currentItem, message, type = 'info') => {
+    if (message) {
+      log.push({
+        message,
+        type,
+        timestamp: Date.now()
+      });
+    }
+    const percent = Math.min(100, Math.round((completedUnits / totalUnits) * 100));
+    onProgress?.({
+      percent,
+      currentItem: currentItem || '',
+      completedUnits,
+      totalUnits,
+      log: [...log],
+      errors: [...errors]
+    });
+  };
+
+  emitProgress('Inizializzazione migrazione...', 'Avvio del processo di migrazione', 'info');
+
   try {
     if (migrationData.playlists.length > 0) {
-      for (const playlistId of migrationData.playlists) {
+      for (let i = 0; i < migrationData.playlists.length; i++) {
+        const playlistId = migrationData.playlists[i];
         try {
           const sourcePlaylist = await spotifyRequest('source', `/playlists/${encodeURIComponent(playlistId)}`);
+          const playlistName = sourcePlaylist.name || playlistId;
+          emitProgress(`Playlist ${i + 1}/${totalPlaylists}: ${playlistName}`);
+
           const isOwnedBySource = sourceUserId && sourcePlaylist.owner?.id === sourceUserId;
 
           if (!isOwnedBySource) {
@@ -113,13 +149,18 @@ export async function migrate(migrationData) {
             } catch (followErr) {
               await saveToLibrary('destination', [`spotify:playlist:${playlistId}`]);
             }
-            log.push(`Playlist seguita su destinazione: ${sourcePlaylist.name} (creata da ${sourcePlaylist.owner?.display_name || 'terzi'})`);
+            completedUnits++;
+            emitProgress(
+              `Playlist ${i + 1}/${totalPlaylists}`,
+              `Playlist seguita su destinazione: ${playlistName} (creata da ${sourcePlaylist.owner?.display_name || 'terzi'})`,
+              'success'
+            );
           } else {
             // Playlist creata dall'utente sorgente: clona e trasferisci le tracce
             const created = await spotifyRequest('destination', '/me/playlists', {
               method: 'POST',
               body: JSON.stringify({
-                name: sourcePlaylist.name,
+                name: playlistName,
                 description: sourcePlaylist.description || '',
                 public: sourcePlaylist.public,
                 collaborative: false
@@ -132,34 +173,78 @@ export async function migrate(migrationData) {
             if (uris.length > 0) {
               await addInBatches('destination', `/playlists/${created.id}/items`, uris);
             }
-            log.push(`Playlist migrata: ${sourcePlaylist.name} (${uris.length} brani)`);
+            completedUnits++;
+            emitProgress(
+              `Playlist ${i + 1}/${totalPlaylists}`,
+              `Playlist clonata su destinazione: ${playlistName} (${uris.length} brani)`,
+              'success'
+            );
           }
         } catch (playlistError) {
-          errors.push(`Playlist (${playlistId}): ${playlistError.message}`);
+          completedUnits++;
+          const errorMsg = `Playlist (${playlistId}): ${playlistError.message}`;
+          errors.push(errorMsg);
+          emitProgress(`Playlist ${i + 1}/${totalPlaylists}`, errorMsg, 'error');
         }
       }
     }
 
     if (migrationData.savedTracks && migrationData.savedTrackIds.length > 0) {
       try {
-        await saveToLibrary('destination', migrationData.savedTrackIds.map(id => `spotify:track:${id}`));
-        log.push(`Brani preferiti migrati: ${migrationData.savedTrackIds.length}`);
+        const total = migrationData.savedTrackIds.length;
+        emitProgress(`Brani preferiti (0/${total})...`);
+        for (let index = 0; index < total; index += 40) {
+          const batch = migrationData.savedTrackIds.slice(index, index + 40);
+          const uris = batch.map(id => `spotify:track:${id}`);
+          await saveToLibrary('destination', uris);
+          completedUnits++;
+          const currentCount = Math.min(total, index + 40);
+          emitProgress(
+            `Brani preferiti (${currentCount}/${total})`,
+            `Salvati ${currentCount}/${total} brani preferiti`,
+            'success'
+          );
+        }
       } catch (savedTracksError) {
-        errors.push(`Brani preferiti: ${savedTracksError.message}`);
+        const errorMsg = `Brani preferiti: ${savedTracksError.message}`;
+        errors.push(errorMsg);
+        emitProgress('Brani preferiti', errorMsg, 'error');
       }
     }
 
     if (migrationData.followedArtists && migrationData.followedArtistIds.length > 0) {
       try {
-        await saveToLibrary('destination', migrationData.followedArtistIds.map(id => `spotify:artist:${id}`));
-        log.push(`Artisti seguiti migrati: ${migrationData.followedArtistIds.length}`);
+        const total = migrationData.followedArtistIds.length;
+        emitProgress(`Artisti seguiti (0/${total})...`);
+        for (let index = 0; index < total; index += 40) {
+          const batch = migrationData.followedArtistIds.slice(index, index + 40);
+          const uris = batch.map(id => `spotify:artist:${id}`);
+          await saveToLibrary('destination', uris);
+          completedUnits++;
+          const currentCount = Math.min(total, index + 40);
+          emitProgress(
+            `Artisti seguiti (${currentCount}/${total})`,
+            `Seguiti ${currentCount}/${total} artisti`,
+            'success'
+          );
+        }
       } catch (artistsError) {
-        errors.push(`Artisti seguiti: ${artistsError.message}`);
+        const errorMsg = `Artisti seguiti: ${artistsError.message}`;
+        errors.push(errorMsg);
+        emitProgress('Artisti seguiti', errorMsg, 'error');
       }
     }
   } catch (error) {
     errors.push(error.message);
+    emitProgress('Errore generale', error.message, 'error');
   }
+
+  completedUnits = totalUnits;
+  emitProgress(
+    'Completato',
+    errors.length === 0 ? 'Tutti gli elementi selezionati sono stati migrati con successo!' : 'Migrazione terminata con alcune segnalazioni.',
+    errors.length === 0 ? 'success' : 'warning'
+  );
 
   return { success: errors.length === 0, log, errors };
 }

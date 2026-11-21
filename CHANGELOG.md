@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Barra di avanzamento con percentuale e descrizione dell'operazione corrente durante la migrazione.
+- Specchietto dei log su richiesta (collassabile) sia durante la migrazione che nella schermata di riepilogo finale.
+- Metadati SEO completi in `index.html`: tag `description`, `keywords`, `canonical`, Open Graph, Twitter Cards, `theme-color` e favicon SVG.
+
 ### Fixed
 
 - Follow non-owned (third-party) playlists on destination instead of attempting to clone their tracks (which triggered Spotify 403 Forbidden under Development Mode).
