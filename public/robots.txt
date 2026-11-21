@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://spotifymigrationtool-d722b.web.app/sitemap.xml
