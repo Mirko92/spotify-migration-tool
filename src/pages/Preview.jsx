@@ -448,8 +448,8 @@ const Preview = ({ authStatus }) => {
                             {playlist.loadedTracks.map((track) => (
                               <ListItem key={track.id} dense sx={{ py: 0.5 }}>
                                 <ListItemText 
-                                  primary={track.name} 
-                                  secondary={track.artists.map(a => a.name).join(', ')}
+                                  primary={track.name || 'Senza titolo'} 
+                                  secondary={track.artists?.map(a => a.name).join(', ') || ''}
                                   primaryTypographyProps={{ variant: 'body2' }}
                                   secondaryTypographyProps={{ variant: 'caption' }}
                                 />
